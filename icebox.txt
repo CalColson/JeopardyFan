@@ -1,0 +1,21 @@
+TODOS:
+
+short-term:
+  add a denotation for when round 1 is finished, and ask user if they would like to play round 2
+    if no:
+      report approriate score
+    if yes:
+      play round 2 and report score when done
+
+long-term:
+  work on the speech recognition for answers:
+    perhaps there is a semantic analyzer that could compare how phonetically similar two words are.
+    remove filler words like "the" from the received answer before comparison.
+
+  long-term storage of variables:
+    score features:
+      average score
+      comparison of your score w/ others
+
+    current clue features:
+      resume from where you left off

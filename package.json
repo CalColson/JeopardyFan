@@ -4,14 +4,15 @@
   "description": "customizable j6! clone",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "tsc": "tsc --watch"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "ask-sdk-core": "^2.7.0",
     "ask-sdk-model": "^1.19.0",
-    "axios": "^0.26.1"
+    "axios": "^0.26.1",
+    "he": "^1.2.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.16.0",

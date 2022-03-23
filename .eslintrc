@@ -11,7 +11,8 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
-    "indent": [
+    "indent": "off",
+    "@typescript-eslint/indent": [
       "error",
       2
     ],

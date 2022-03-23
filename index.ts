@@ -1,45 +1,80 @@
 import {
   ErrorHandler,
   RequestHandler,
+  getSlotValue,
   SkillBuilders
 } from 'ask-sdk-core'
 
-import axios from 'axios'
+import { J6Data } from './types/api/J6Response'
+import { getJ6Data, getFullSpeechText, getAnswer, getConcludingSpeechText } from './utils/utils'
 
-interface J6Data {
-  game_id: string,
-  date: string,
-  clues_round_1: Clue[],
-  clues_round_2: Clue[]
-}
-
-interface Clue {
-  answers: string[],
-  category: string,
-  clue: string,
-  correct_answer_index: string
-}
-
-axios.get('https://www.jeopardy.com/api/j6-clues').then((res) => {
-  const data : J6Data = res.data[0]
-  console.log(data.clues_round_1[0].category)
-})
+let j6Data : J6Data
+let curClueIndex : number
+let score : number
+const repromptSpeechText = 'please answer the clue in the form of a question'
 
 const LaunchRequestHandler: RequestHandler = {
   canHandle(input) {
     const request = input.requestEnvelope.request
     return request.type === 'LaunchRequest'
   },
-  async handle(input) {
-    const j6Response = await axios.get('https://www.jeopardy.com/api/j6-clues')
-    const j6Data : J6Data = j6Response.data[0]
 
-    const speechText = j6Data.clues_round_1[0].category
+  async handle(input) {
+    // initialize values
+    j6Data = await getJ6Data()
+    curClueIndex = 0
+    score = 0
+
+    let speechText = 'Welcome to Jeopardy Fan. Here are your round 1 clues for the day.'
+    speechText += ' ' + getFullSpeechText(j6Data, curClueIndex)
 
     return input.responseBuilder
       .speak(speechText)
-      .reprompt(speechText)
+      .reprompt(repromptSpeechText)
       .getResponse()
+  }
+}
+
+const AnswerIntentHandler: RequestHandler = {
+  canHandle(input) {
+    const request = input.requestEnvelope.request
+    
+    return request.type === 'IntentRequest'
+      && request.intent.name === 'AnswerIntent'
+  },
+
+  handle(input) {
+    const receivedAnswer = getSlotValue(input.requestEnvelope, 'answer').toLowerCase()
+    const correctAnswer = getAnswer(j6Data, curClueIndex).toLowerCase()
+
+    let speechText
+
+    if (receivedAnswer.includes(correctAnswer)) {
+      speechText = `Correct! The answer is: ${correctAnswer}. <break strength="x-strong" />`
+      score++ 
+    } else {
+      speechText = `Sorry. You answered ${receivedAnswer}. The correct answer is: ${correctAnswer}.`
+    }
+    curClueIndex++
+
+    if (curClueIndex < 12) {
+      // ask next question
+      speechText += ' ' + getFullSpeechText(j6Data, curClueIndex)
+  
+      return input.responseBuilder
+        .speak(speechText)
+        .reprompt(repromptSpeechText)
+        .getResponse()
+    } else {
+      // report score and close
+      speechText += ' ' + getConcludingSpeechText(score)
+
+      return input.responseBuilder
+        .speak(speechText)
+        .withShouldEndSession(true)
+        .getResponse()
+    }
+    
   }
 }
 
@@ -62,6 +97,20 @@ const CancelAndStopIntentHandler: RequestHandler = {
   }
 }
 
+const FallbackIntentHandler: RequestHandler = {
+  canHandle(_input) {
+    return true
+  },
+
+  handle(input) {
+
+    return input.responseBuilder
+      .speak(repromptSpeechText)
+      .reprompt(repromptSpeechText)
+      .getResponse()
+  }
+}
+
 const myErrorHandler: ErrorHandler = {
   canHandle(_input) {
     return true
@@ -78,7 +127,12 @@ const myErrorHandler: ErrorHandler = {
 }
 
 export const handler = SkillBuilders.custom()
-  .addRequestHandlers(LaunchRequestHandler, CancelAndStopIntentHandler)
+  .addRequestHandlers(
+    LaunchRequestHandler,
+    AnswerIntentHandler,
+    CancelAndStopIntentHandler,
+    FallbackIntentHandler
+  )
   .addErrorHandlers(myErrorHandler)
   .lambda()
 
