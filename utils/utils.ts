@@ -46,7 +46,25 @@ export function getCategorySpeechText(j6data : J6Data, clueIndex: number): strin
   } else if (correctedClueIndex === 5 || correctedClueIndex === 11) {
     speechText = 'This round\'s last category is: ' + speechText
   } else {
-    speechText = 'The next category is: ' + speechText
+    let ordinalClueNumber : string
+    switch (correctedClueIndex) {
+      case 1: case 7:
+        ordinalClueNumber = 'second'
+        break
+      case 2: case 8:
+        ordinalClueNumber = 'third'
+        break
+      case 3: case 9:
+        ordinalClueNumber = 'fourth'
+        break
+      case 4: case 10:
+        ordinalClueNumber = 'fifth'
+        break
+    
+      default:
+        break
+    }
+    speechText = `The ${ordinalClueNumber} category is: ` + speechText
   }
 
   speechText = cleanSpeechText(speechText)
@@ -88,6 +106,10 @@ export function getAnswer(j6Data: J6Data, clueIndex: number): string {
   answer[1] = answer[1].replace(/[?]/g, '')
 
   return answer[1].trim()
+}
+
+export function getEndRound1SpeechText(score: number): string {
+  return `End of single jeopardy. You scored ${score} out of 6. Would you like to play double jeopardy as well? Please say yes, or no.`
 }
 
 export function getConcludingSpeechText(score : number): string {

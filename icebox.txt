@@ -1,6 +1,8 @@
-TODOS:
-
 short-term:
+
+  TODO: 
+
+  DONE:
   add a denotation for when round 1 is finished, and ask user if they would like to play round 2
     if no:
       report approriate score
@@ -8,6 +10,8 @@ short-term:
       play round 2 and report score when done
 
 long-term:
+
+  TODO:
   work on the speech recognition for answers:
     perhaps there is a semantic analyzer that could compare how phonetically similar two words are.
     remove filler words like "the" from the received answer before comparison.
@@ -19,3 +23,5 @@ long-term:
 
     current clue features:
       resume from where you left off
+
+  DONE:
