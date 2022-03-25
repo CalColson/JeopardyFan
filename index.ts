@@ -6,14 +6,15 @@ import {
 } from 'ask-sdk-core'
 
 import { J6Data } from './types/api/J6Response'
-import { getJ6Data, getFullSpeechText, getAnswer, getConcludingSpeechText, getEndRound1SpeechText } from './utils/utils'
+import { getJ6Data, getFullSpeechText, getAnswer, getConcludingSpeechText, getEndRound1SpeechText, getResponse } from './utils/utils'
 
 let j6Data : J6Data
 let curClueIndex : number
 let score : number
+let prevQuestionSpeechText : string
 let isBetweenRounds = false
 
-const repromptSpeechText = 'please answer the clue in the form of a question'
+const yesNoRepromptSpeechText = 'Please say yes, or no.'
 
 const LaunchRequestHandler: RequestHandler = {
   canHandle(input) {
@@ -30,11 +31,9 @@ const LaunchRequestHandler: RequestHandler = {
 
     let speechText = 'Welcome to Jeopardy Fan. Here are your single jeopardy clues for the day.'
     speechText += ' ' + getFullSpeechText(j6Data, curClueIndex)
+    prevQuestionSpeechText = getFullSpeechText(j6Data, curClueIndex)
 
-    return input.responseBuilder
-      .speak(speechText)
-      .reprompt(repromptSpeechText)
-      .getResponse()
+    return getResponse(input, speechText)
   }
 }
 
@@ -52,7 +51,8 @@ const AnswerIntentHandler: RequestHandler = {
 
     let speechText
 
-    if (receivedAnswer.includes(correctAnswer)) {
+    if (correctAnswer.includes(receivedAnswer) || receivedAnswer.includes(correctAnswer)) {
+      // FIXME: Currently this conditional will be overly optimistic. It will cause issues if someone intentionally tries to break it, by saying short answers, such as 'a', that are very likely to be included in the correct answer
       speechText = `Correct! The answer is: ${correctAnswer}. <break strength="x-strong" />`
       score++ 
     } else {
@@ -64,29 +64,36 @@ const AnswerIntentHandler: RequestHandler = {
       isBetweenRounds = true
       speechText += ' ' + getEndRound1SpeechText(score)
 
-      return input.responseBuilder
-        .speak(speechText)
-        .reprompt(repromptSpeechText)
-        .getResponse()
+      return getResponse(input, speechText, yesNoRepromptSpeechText)
 
     } else if (curClueIndex < 12) {
       // ask next question
       speechText += ' ' + getFullSpeechText(j6Data, curClueIndex)
+      prevQuestionSpeechText = getFullSpeechText(j6Data, curClueIndex)
   
-      return input.responseBuilder
-        .speak(speechText)
-        .reprompt(repromptSpeechText)
-        .getResponse()
+      return getResponse(input, speechText)
 
     } else {
       // report score and close
       speechText += ' ' + getConcludingSpeechText(score)
 
-      return input.responseBuilder
-        .speak(speechText)
-        .withShouldEndSession(true)
-        .getResponse()
+      return getResponse(input, speechText, null, true)
     }
+  }
+}
+
+// when the question is asked to be repeated
+const RepeatIntentHandler: RequestHandler = {
+  canHandle(input) {
+    const request = input.requestEnvelope.request
+
+    return request.type === 'IntentRequest'
+      && request.intent.name === 'AMAZON.RepeatIntent'
+  },
+
+  handle(input) {
+    if (isBetweenRounds) return getResponse(input, yesNoRepromptSpeechText, yesNoRepromptSpeechText)
+    else return getResponse(input, prevQuestionSpeechText)
   }
 }
 
@@ -103,11 +110,9 @@ const YesIntentHandler: RequestHandler = {
     if (isBetweenRounds) {
       isBetweenRounds = false
       const speechText = 'Ok. Here are your double jeopardy clues for the day. ' + getFullSpeechText(j6Data, curClueIndex)
+      prevQuestionSpeechText = getFullSpeechText(j6Data, curClueIndex)
 
-      return input.responseBuilder
-        .speak(speechText)
-        .reprompt(repromptSpeechText)
-        .getResponse()
+      return getResponse(input, speechText)
 
     } else {
       return FallbackIntentHandler.handle(input)
@@ -128,10 +133,7 @@ const NoIntentHandler: RequestHandler = {
       isBetweenRounds = false
       const speechText = 'Ok. Thank you for playing. Goodbye!'
 
-      return input.responseBuilder
-        .speak(speechText)
-        .withShouldEndSession(true)
-        .getResponse()
+      return getResponse(input, speechText, null, true)
 
     } else {
       return FallbackIntentHandler.handle(input)
@@ -151,24 +153,34 @@ const CancelAndStopIntentHandler: RequestHandler = {
   handle(input) {
     const speechText = 'Closing Jeopardy Fan'
 
-    return input.responseBuilder
-      .speak(speechText)
-      .withShouldEndSession(true)
-      .getResponse()
+    return getResponse(input, speechText, null, true)
   }
 }
 
+// used for generic out-of-domain response, as well as catching special purpose intents
 const FallbackIntentHandler: RequestHandler = {
   canHandle(_input) {
     return true
   },
 
   handle(input) {
+    // handle a request for a slow repeat of speechText
+    if (getSlotValue(input.requestEnvelope, 'fallback').includes('slow')) {
+      if (isBetweenRounds) {
+        const speechText = `<emphasis level="strong">${yesNoRepromptSpeechText}</emphasis>`
+        return getResponse(input, speechText, speechText)
+      } else {
+        const speechText = `<emphasis level="strong">${prevQuestionSpeechText}</emphasis>`
+        return getResponse(input, speechText)
+      }
+    }
 
-    return input.responseBuilder
-      .speak(repromptSpeechText)
-      .reprompt(repromptSpeechText)
-      .getResponse()
+    // general purpose out-of-domain responses
+    const speechText = isBetweenRounds ?
+      yesNoRepromptSpeechText :
+      'please answer the clue in the form of a question'
+
+    return getResponse(input, speechText, speechText)
   }
 }
 
@@ -180,10 +192,9 @@ const myErrorHandler: ErrorHandler = {
   handle(input, err) {
     console.log(`handling error: ${err.message}`)
 
-    return input.responseBuilder
-      .speak('An error occurred, please repeat your request')
-      .reprompt('An error occurred, please repeat your request')
-      .getResponse()
+    const speechText = 'An error occurred, please repeat your request'
+
+    return getResponse(input, speechText, speechText)
   }
 }
 
@@ -191,6 +202,7 @@ export const handler = SkillBuilders.custom()
   .addRequestHandlers(
     LaunchRequestHandler,
     AnswerIntentHandler,
+    RepeatIntentHandler,
     YesIntentHandler,
     NoIntentHandler,
     CancelAndStopIntentHandler,

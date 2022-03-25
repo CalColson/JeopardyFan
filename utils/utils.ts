@@ -1,3 +1,5 @@
+import { HandlerInput } from 'ask-sdk-core'
+import { Response } from 'ask-sdk-model'
 import axios from 'axios'
 import { decode as heDecode } from 'he'
 import { J6Data } from '../types/api/J6Response'
@@ -114,4 +116,29 @@ export function getEndRound1SpeechText(score: number): string {
 
 export function getConcludingSpeechText(score : number): string {
   return `Thank you for playing! You scored ${score} out of 12. Goodbye!`
+}
+
+export function getResponse(
+  input : HandlerInput,
+  speechText : string,
+  repromptSpeechText = null,
+  shouldEndSession = false
+) : Response {
+
+  if (shouldEndSession) {
+    return input.responseBuilder
+      .speak(speechText)
+      .withShouldEndSession(true)
+      .getResponse()
+
+  } else {
+    if (!repromptSpeechText) {
+      repromptSpeechText = 'please answer the clue in the form of a question'
+    }
+    return input.responseBuilder
+      .speak(speechText)
+      .reprompt(repromptSpeechText)
+      .getResponse()
+  }
+
 }

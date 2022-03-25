@@ -1,9 +1,13 @@
 short-term:
 
-  TODO: 
+  TODO:
+
 
   DONE:
-  add a denotation for when round 1 is finished, and ask user if they would like to play round 2
+  - add a slow-down intent if possible
+  - discover why the roots did not work
+  - add a repeat intent
+  - add a denotation for when round 1 is finished, and ask user if they would like to play round 2
     if no:
       report approriate score
     if yes:
