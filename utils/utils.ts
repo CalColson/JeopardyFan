@@ -111,7 +111,7 @@ export function getAnswer(j6Data: J6Data, clueIndex: number): string {
 }
 
 export function getEndRound1SpeechText(score: number): string {
-  return `End of single jeopardy. You scored ${score} out of 6. Would you like to play double jeopardy as well? Please say yes, or no.`
+  return `End of single jeopardy. You scored ${score} out of 6. Would you like to play double jeopardy as well?`
 }
 
 export function getConcludingSpeechText(score : number): string {
